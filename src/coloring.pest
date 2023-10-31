@@ -1,0 +1,21 @@
+// Definitions
+//   pest
+
+WHITESPACE = _{ "\t" | " " | NEWLINE }
+COMMENT = _{ "//" ~ (!NEWLINE ~ ANY)* | "/*" ~ ((!"*"  | "*" ~ !"/") ~ ANY)* ~ "*/" }
+sep = _{ WHITESPACE+ }
+
+//   baseline
+
+id = @{ ASCII_ALPHA ~ (ASCII_ALPHANUMERIC | "_")* }
+n = @{ ASCII_DIGIT+ }
+
+// Program
+
+//   definition
+
+program = { SOI ~ types ~ dependencies ~ allocations ~ EOI }
+
+types = { "types" }
+dependencies = { "dependencies" }
+allocations = { "allocations" }
