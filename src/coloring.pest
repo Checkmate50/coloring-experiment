@@ -7,15 +7,31 @@ sep = _{ WHITESPACE+ }
 
 //   baseline
 
-id = @{ ASCII_ALPHA ~ (ASCII_ALPHANUMERIC | "_")* }
+var = @{ ASCII_ALPHA_LOWER ~ (ASCII_ALPHANUMERIC | "_")* }
 n = @{ ASCII_DIGIT+ }
+typ = @{ ASCII_ALPHA_UPPER ~ (ASCII_ALPHANUMERIC | "_")* | "int" | "float" | "bool" }
+
+//   allocation symbols
+
+single = { "?" }
+open = { "???" }
 
 // Program
 
 //   definition
 
-program = { SOI ~ types ~ dependencies ~ allocations ~ EOI }
+program = { SOI ~ types ~ dependencies ~ operations ~ EOI }
 
-types = { "types" }
-dependencies = { "dependencies" }
-allocations = { "allocations" }
+//   type declarations
+types = { (type_decl ~ ";")+ }
+type_decl = { var ~ ":" ~ typ }
+
+//   dependencies
+dependencies = { (dependency ~ ";")+ }
+dependency = { var ~ "<" ~ var }
+
+operations = { operation+ }
+operation = { allocation | scope }
+allocation = { alloc ~ ";" }
+alloc = { single | open | typ | "alloc" ~ var }
+scope = { "{" ~ operations ~ "}" }

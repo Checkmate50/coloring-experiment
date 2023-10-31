@@ -1,3 +1,9 @@
-types
-dependencies
-allocations
+x : int;
+y : float;
+
+y < x;
+
+alloc x;
+{
+    float;
+}
