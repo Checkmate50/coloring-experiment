@@ -1,0 +1,12 @@
+x : int;
+y : float;
+
+x < y;
+
+if {
+    int;
+}
+else {
+    int;
+}
+float;

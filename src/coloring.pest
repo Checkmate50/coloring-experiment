@@ -31,7 +31,7 @@ dependencies = { (dependency ~ ";")+ }
 dependency = { var ~ "<" ~ var }
 
 operations = { operation+ }
-operation = { allocation | scope }
+operation = { allocation | branch }
 allocation = { alloc ~ ";" }
 alloc = { single | open | typ | "alloc" ~ var }
-scope = { "{" ~ operations ~ "}" }
+branch = { "if" ~ "{" ~ operations ~ "}" ~ "else" ~ "{" ~ operations ~ "}" }

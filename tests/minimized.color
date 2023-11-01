@@ -1,0 +1,12 @@
+x : int;
+y : int;
+z : float;
+w : float;
+
+x < y;
+y < z;
+w < z;
+
+int;
+float;
+???;

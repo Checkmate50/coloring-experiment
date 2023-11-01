@@ -12,9 +12,16 @@ pub enum Allocation {
 }
 
 #[derive(Debug, Clone)]
+pub struct Branch {
+    left: Vec<Operation>,
+    right: Vec<Operation>
+}
+
+#[derive(Debug, Clone)]
 pub enum Operation {
     Allocation(Allocation),
-    Scope(Vec<Operation>)
+    // only exactly one branch can be taken
+    Branch(Branch),
 }
 
 #[derive(Debug, Clone)]
