@@ -13,8 +13,8 @@ pub enum Allocation {
 
 #[derive(Debug, Clone)]
 pub struct Branch {
-    left: Vec<Operation>,
-    right: Vec<Operation>
+    pub left: Vec<Operation>,
+    pub right: Vec<Operation>
 }
 
 #[derive(Debug, Clone)]

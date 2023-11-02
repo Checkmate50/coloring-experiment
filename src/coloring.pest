@@ -30,8 +30,8 @@ type_decl = { var ~ ":" ~ typ }
 dependencies = { (dependency ~ ";")+ }
 dependency = { var ~ "<" ~ var }
 
-operations = { operation+ }
+operations = { operation* }
 operation = { allocation | branch }
 allocation = { alloc ~ ";" }
-alloc = { single | open | typ | "alloc" ~ var }
+alloc = { open | single | typ | "alloc" ~ var }
 branch = { "if" ~ "{" ~ operations ~ "}" ~ "else" ~ "{" ~ operations ~ "}" }

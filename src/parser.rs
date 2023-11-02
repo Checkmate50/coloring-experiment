@@ -87,7 +87,7 @@ impl ColoringParser {
     fn operation(input: Node) -> ParseResult<ast::Operation> {
         Ok(match_nodes!(input.into_children();
             [allocation(allocation)] => ast::Operation::Allocation(allocation),
-            [scope(operations)] => ast::Operation::Scope(operations)
+            [branch(branch)] => ast::Operation::Branch(branch)
         ))
     }
 
@@ -106,9 +106,12 @@ impl ColoringParser {
         ))
     }
 
-    fn scope(input: Node) -> ParseResult<Vec<ast::Operation>> {
+    fn branch(input: Node) -> ParseResult<ast::Branch> {
         Ok(match_nodes!(input.into_children();
-            [operations(operations)] => operations
+            [operations(left), operations(right)] => ast::Branch {
+                left,
+                right
+            }
         ))
     }
 
