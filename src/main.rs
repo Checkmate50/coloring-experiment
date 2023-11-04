@@ -13,5 +13,5 @@ fn main() {
         std::process::exit(0)
     }
     let input_string = std::fs::read_to_string(arg).expect("couldn't read input");
-    dbg!(parser::parse(&input_string).expect("Parsing failed"));
+    let ast = parser::parse(&input_string).expect("Parsing failed");
 }
