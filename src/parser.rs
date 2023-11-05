@@ -5,7 +5,7 @@ use pest_consume::{match_nodes, Error, Parser};
 #[grammar = "src/coloring.pest"]
 struct ColoringParser;
 
-use crate::ast;
+pub mod ast;
 use std::collections::HashMap;
 
 #[derive(Clone, Debug)]
@@ -127,7 +127,6 @@ impl ColoringParser {
 }
 
 pub fn parse(code: &str) -> ParseResult<ast::Program> {
-    dbg!(code);
     let user_data = UserData {};
     let parsed = ColoringParser::parse_with_userdata(Rule::program, code, user_data)?;
     let result = ColoringParser::program(parsed.single()?);

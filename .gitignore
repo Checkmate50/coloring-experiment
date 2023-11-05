@@ -16,6 +16,7 @@ Cargo.lock
 # library stuff
 
 .idea/*
+.vscode/*
 
 # Added by cargo
 

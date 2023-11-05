@@ -5,16 +5,16 @@ pub type Var = String;
 
 #[derive(Debug, Clone)]
 pub enum Allocation {
-    Single, // ? -- one allocation of any type
-    Open,   // ??? -- any number of allocations
+    Single,     // ? -- one allocation of any type
+    Open,       // ??? -- any number of allocations
     Type(Type), // an allocation of exactly type Type
-    Var(Var)  // explicit allocation
+    Var(Var),   // explicit allocation
 }
 
 #[derive(Debug, Clone)]
 pub struct Branch {
     pub left: Vec<Operation>,
-    pub right: Vec<Operation>
+    pub right: Vec<Operation>,
 }
 
 #[derive(Debug, Clone)]
@@ -28,5 +28,5 @@ pub enum Operation {
 pub struct Program {
     pub types: HashMap<Var, String>,
     pub dependencies: HashMap<Var, Vec<Var>>,
-    pub allocations: Vec<Operation>
+    pub allocations: Vec<Operation>,
 }
