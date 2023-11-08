@@ -1,5 +1,4 @@
 use coloring::parser;
-use coloring::graph;
 use coloring::scheduler;
 use std::env;
 

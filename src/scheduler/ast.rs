@@ -1,34 +1,41 @@
 use std::fmt;
 
-pub enum ScheduledAllocation {
+pub enum ScheduledOperation {
     Branch {
-        left: ScheduledAllocations,
-        right: ScheduledAllocations,
+        left: ScheduledOperations,
+        right: ScheduledOperations,
     },
     Allocation(String),
 }
 
-pub struct ScheduledAllocations {
-    pub allocations: Vec<ScheduledAllocation>
+pub struct ScheduledOperations {
+    pub operations: Vec<ScheduledOperation>,
 }
 
-pub type ScheduledProgram = ScheduledAllocations;
+pub type ScheduledProgram = ScheduledOperations;
 
-impl fmt::Display for ScheduledAllocation {
+impl ScheduledOperations {
+    pub fn new(operations: Vec<ScheduledOperation>) -> ScheduledOperations {
+        ScheduledOperations { operations }
+    }
+}
+
+impl fmt::Display for ScheduledOperation {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ScheduledAllocation::Branch { left, right } =>
-                write!(f, "if {{\n{}}}\nelse {{\n{}}}\n", left, right),
-            ScheduledAllocation::Allocation(s) => write!(f, "{};\n", s),
+            ScheduledOperation::Branch { left, right } => {
+                write!(f, "if {{\n{}}}\nelse {{\n{}}}\n", left, right)
+            }
+            ScheduledOperation::Allocation(s) => write!(f, "{};\n", s),
         }
     }
 }
 
-impl fmt::Display for ScheduledAllocations {
+impl fmt::Display for ScheduledOperations {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut result: String = "".to_string();
-        for allocation in &self.allocations {
-            result += &allocation.to_string()
+        for operation in &self.operations {
+            result += &operation.to_string()
         }
         write!(f, "{}", result)
     }

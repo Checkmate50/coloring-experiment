@@ -120,7 +120,7 @@ impl ColoringParser {
             [types(t), dependencies(d), operations(a), EOI(_)] => ast::Program {
                 types: t,
                 dependencies: d,
-                allocations: a
+                operations: a
             },
         ))
     }
