@@ -15,6 +15,8 @@ fn main() {
     }
     let input_string = std::fs::read_to_string(arg).expect("couldn't read input");
     let program = parser::parse(&input_string).expect("Parsing failed");
-    let result = scheduler::schedule(program);
-    println!("{}", result);
+    match scheduler::schedule(program) {
+        None => println!("No solution found"),
+        Some(result) => print!("{}", result)
+    }
 }

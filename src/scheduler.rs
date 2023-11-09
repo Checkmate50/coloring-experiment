@@ -5,41 +5,65 @@ use context::Context;
 use std::collections::HashSet;
 
 fn schedule_allocation(
+    operations: &Vec<parser::ast::Operation>,
+    index: usize,
     allocated: HashSet<String>,
-    operation: parser::ast::Operation,
+    allocation: &parser::ast::Allocation,
     context: &Context,
-) -> Option<String> {
-    match operation {
-        parser::ast::Operation::Branch(_) => todo!(),
-        parser::ast::Operation::Allocation(alloc) => match alloc {
-            parser::ast::Allocation::Single => todo!(),
-            parser::ast::Allocation::Open => todo!(),
-            parser::ast::Allocation::Type(_) => todo!(),
-            parser::ast::Allocation::Var(_) => todo!(),
+) -> Option<ast::ScheduledOperations> {
+    let mut temp = Vec::new();
+    let options = match allocation {
+        parser::ast::Allocation::Single => context.vars(),
+        parser::ast::Allocation::Open => todo!(),
+        parser::ast::Allocation::Type(typ) => context.get_matching(typ),
+        parser::ast::Allocation::Var(v) => {
+            temp.push(v.clone());
+            &temp
         },
-    }
+    };
+    for var in options {
+        if allocated.contains(var) {
+            continue;
+        }
+        let mut new_allocation = allocated.clone();
+        new_allocation.insert(var.clone());
+        match schedule_operations(operations, index + 1, new_allocation, context) {
+            Some(mut result) => {
+                result.operations.push(ast::ScheduledOperation::Allocation(var.clone()));
+                return Some(result);
+            },
+            None => {},
+        }
+    };
+    None
 }
 
 fn schedule_operations(
     operations: &Vec<parser::ast::Operation>,
     index: usize,
-    current: Vec<ast::ScheduledOperation>,
     allocated: HashSet<String>,
     context: &Context,
 ) -> Option<ast::ScheduledOperations> {
     match operations.get(index) {
-        None => Some(ast::ScheduledOperations::new(current)),
+        None => Some(ast::ScheduledOperations {operations: vec![]}),
         Some(parser::ast::Operation::Branch(_)) => todo!(),
-        Some(parser::ast::Operation::Allocation(alloc)) => {}
+        Some(parser::ast::Operation::Allocation(allocation)) => {
+            schedule_allocation(operations, index, allocated, allocation, context)
+        }
     }
 }
 
 pub fn schedule(program: parser::ast::Program) -> Option<ast::ScheduledProgram> {
-    schedule_operations(
+    match schedule_operations(
         &program.operations,
         0,
-        Vec::new(),
         HashSet::new(),
         &Context::new(&program),
-    )
+    ) {
+        None => None,
+        Some(mut result) => {
+            result.operations.reverse();
+            Some(result)
+        }
+    }
 }
