@@ -1,5 +1,6 @@
 use std::fmt;
 
+#[derive(Debug)]
 pub enum ScheduledOperation {
     Branch {
         left: ScheduledOperations,
@@ -8,6 +9,7 @@ pub enum ScheduledOperation {
     Allocation(String),
 }
 
+#[derive(Debug)]
 pub struct ScheduledOperations {
     pub operations: Vec<ScheduledOperation>,
 }

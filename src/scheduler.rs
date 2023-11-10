@@ -1,16 +1,18 @@
 mod ast;
 mod context;
+mod state;
 use crate::parser;
+use state::State;
 use context::Context;
 use std::collections::HashSet;
 
 fn schedule_allocation(
     operations: &Vec<parser::ast::Operation>,
     index: usize,
-    allocated: HashSet<String>,
+    state: State,
     allocation: &parser::ast::Allocation,
     context: &Context,
-) -> Option<ast::ScheduledOperations> {
+) -> State {
     let mut temp = Vec::new();
     let options = match allocation {
         parser::ast::Allocation::Single => context.vars(),
