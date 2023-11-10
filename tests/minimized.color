@@ -2,6 +2,7 @@ x : int;
 y : int;
 z : float;
 w : float;
+q : T;
 
 x < y;
 y < z;
@@ -10,3 +11,4 @@ w < z;
 int;
 float;
 ???;
+T;

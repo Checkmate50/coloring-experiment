@@ -64,8 +64,9 @@ impl ColoringParser {
             [dependency(deps)..] => {
                 let mut result = HashMap::new();
                 for (var1, var2) in deps {
-                    let v = result.entry(var1).or_insert_with(|| Vec::new());
-                    v.push(var2);
+                    // var1 < var2 --> var2 depends on var1
+                    let v = result.entry(var2).or_insert_with(|| Vec::new());
+                    v.push(var1);
                 }
                 Ok(result)
             }
