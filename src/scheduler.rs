@@ -4,6 +4,7 @@ mod state;
 use crate::parser;
 use context::Context;
 use state::{InState, OutState};
+use std::collections::VecDeque;
 
 fn schedule_allocation(
     operations: &Vec<parser::ast::Operation>,
@@ -23,6 +24,8 @@ fn schedule_allocation(
                     result.ast.operations.extend(
                         to_fill
                             .into_iter()
+                            // we need to reverse to undo the stack
+                            .rev()
                             .map(|s| ast::ScheduledOperation::Allocation(s)),
                     );
                     Some(result)
@@ -63,21 +66,43 @@ fn schedule_allocation(
 
 fn schedule_operations(
     operations: &Vec<parser::ast::Operation>,
-    state: InState,
+    mut state: InState,
     context: &Context,
 ) -> Option<OutState> {
     match operations.get(state.index) {
         None => {
             // Run a simple BFS to remove remaining dependencies
-            let mut remaining : Vec<String> = context
+            let mut remaining: VecDeque<String> = context
                 .vars()
                 .iter()
                 .filter(|s| !state.allocated.contains(*s))
                 .cloned()
                 .collect();
             let mut to_fill = Vec::new();
+            let mut count = 0;
             while remaining.len() > 0 {
-
+                // get the first element of the queue
+                let element = remaining.pop_front().unwrap();
+                // if we have written all the dependencies for this element
+                if context
+                    .program
+                    .dependencies
+                    .get(&element)
+                    .unwrap()
+                    .iter()
+                    .all(|s| state.allocated.contains(s))
+                {
+                    state.allocated.insert(element.clone());
+                    to_fill.push(element);
+                    count = 0;
+                } else {
+                    remaining.push_back(element);
+                    // Safety check if we didn't make progress on the last loop
+                    if count >= remaining.len() {
+                        return None;
+                    }
+                    count += 1;
+                }
             }
             Some(OutState::new(to_fill))
         }
