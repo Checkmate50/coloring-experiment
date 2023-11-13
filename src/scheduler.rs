@@ -2,23 +2,32 @@ mod ast;
 mod context;
 mod state;
 use crate::parser;
-use state::State;
 use context::Context;
-use std::collections::HashSet;
+use state::{InState, OutState};
 
 fn schedule_allocation(
     operations: &Vec<parser::ast::Operation>,
-    index: usize,
-    state: State,
+    state: InState,
     allocation: &parser::ast::Allocation,
     context: &Context,
-) -> State {
+) -> Option<OutState> {
     let mut temp = Vec::new();
     let options = match allocation {
         parser::ast::Allocation::Single => context.vars(),
         parser::ast::Allocation::Open => {
-            result = schedule_operations(operations, index + 1, allocated, context);
-            &temp
+            return match schedule_operations(operations, state.incremented(), context) {
+                None => None,
+                Some(mut result) => {
+                    let mut to_fill = Vec::new();
+                    std::mem::swap(&mut to_fill, &mut result.to_fill);
+                    result.ast.operations.extend(
+                        to_fill
+                            .into_iter()
+                            .map(|s| ast::ScheduledOperation::Allocation(s)),
+                    );
+                    Some(result)
+                }
+            };
         }
         parser::ast::Allocation::Type(typ) => context.get_matching(typ),
         parser::ast::Allocation::Var(v) => {
@@ -27,21 +36,21 @@ fn schedule_allocation(
         }
     };
     for var in options {
-        if allocated.contains(var) {
+        if state.allocated.contains(var) {
             continue;
         }
         // if any dependencies are unallocated, skip
         if match context.program.dependencies.get(var) {
             None => false,
-            Some(v) => v.iter().any(|x| !allocated.contains(x)),
+            Some(v) => v.iter().any(|x| !state.allocated.contains(x)),
         } {
             continue;
         }
-        let mut new_allocation = allocated.clone();
-        new_allocation.insert(var.clone());
-        match schedule_operations(operations, index + 1, new_allocation, context) {
+        let new_state = state.clone_alloc(var.clone());
+        match schedule_operations(operations, new_state.incremented(), context) {
             Some(mut result) => {
                 result
+                    .ast
                     .operations
                     .push(ast::ScheduledOperation::Allocation(var.clone()));
                 return Some(result);
@@ -54,30 +63,41 @@ fn schedule_allocation(
 
 fn schedule_operations(
     operations: &Vec<parser::ast::Operation>,
-    index: usize,
-    allocated: HashSet<String>,
+    state: InState,
     context: &Context,
-) -> Option<ast::ScheduledOperations> {
-    match operations.get(index) {
-        None => Some(ast::ScheduledOperations { operations: vec![] }),
+) -> Option<OutState> {
+    match operations.get(state.index) {
+        None => {
+            // Run a simple BFS to remove remaining dependencies
+            let mut remaining : Vec<String> = context
+                .vars()
+                .iter()
+                .filter(|s| !state.allocated.contains(*s))
+                .cloned()
+                .collect();
+            let mut to_fill = Vec::new();
+            while remaining.len() > 0 {
+
+            }
+            Some(OutState::new(to_fill))
+        }
         Some(parser::ast::Operation::Branch(_)) => todo!(),
         Some(parser::ast::Operation::Allocation(allocation)) => {
-            schedule_allocation(operations, index, allocated, allocation, context)
+            schedule_allocation(operations, state, allocation, context)
         }
     }
 }
 
 pub fn schedule(program: parser::ast::Program) -> Option<ast::ScheduledProgram> {
-    match schedule_operations(
-        &program.operations,
-        0,
-        HashSet::new(),
-        &Context::new(&program),
-    ) {
+    match schedule_operations(&program.operations, InState::new(), &Context::new(&program)) {
         None => None,
         Some(mut result) => {
-            result.operations.reverse();
-            Some(result)
+            if result.to_fill.len() > 0 {
+                None
+            } else {
+                result.ast.operations.reverse();
+                Some(result.ast)
+            }
         }
     }
 }
