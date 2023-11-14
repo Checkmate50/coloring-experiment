@@ -83,14 +83,14 @@ fn schedule_operations(
             while remaining.len() > 0 {
                 // get the first element of the queue
                 let element = remaining.pop_front().unwrap();
+
                 // if we have written all the dependencies for this element
                 if context
                     .program
                     .dependencies
                     .get(&element)
-                    .unwrap()
-                    .iter()
-                    .all(|s| state.allocated.contains(s))
+                    .map(|v| v.iter().all(|s| state.allocated.contains(s)))
+                    .unwrap_or(true)
                 {
                     state.allocated.insert(element.clone());
                     to_fill.push(element);

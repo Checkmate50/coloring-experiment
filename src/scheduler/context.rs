@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use crate::parser;
 use crate::parser::ast::{Type, Var};
 
+#[derive(Debug)]
 pub struct Context<'a> {
     pub program: &'a parser::ast::Program,
     typ_map: HashMap<Type, Vec<Var>>,
