@@ -38,17 +38,10 @@ impl ColoringParser {
         input.as_str().parse::<String>().map_err(|e| input.error(e))
     }
 
-    fn types(input: Node) -> ParseResult<HashMap<ast::Var, ast::Type>> {
-        let error = input.error("Duplicate types");
+    fn types(input: Node) -> ParseResult<Vec<(ast::Var, ast::Type)>> {
         match_nodes!(input.into_children();
             [type_decl(typs)..] => {
-                let mut result = HashMap::new();
-                for (var, typ) in typs {
-                    if result.insert(var.clone(), typ) != None {
-                        return Err(error);
-                    }
-                }
-                Ok(result)
+                Ok(typs.collect())
             }
         )
     }

@@ -4,80 +4,37 @@ mod state;
 use crate::parser;
 use context::Context;
 use state::{InState, OutState};
-use std::collections::VecDeque;
+use std::collections::{HashSet, VecDeque};
 
-fn schedule_allocation(
+fn explicate_open(
     operations: &Vec<parser::ast::Operation>,
     state: InState,
-    allocation: &parser::ast::Allocation,
     context: &Context,
 ) -> Option<OutState> {
-    let mut temp = Vec::new();
-    let options = match allocation {
-        parser::ast::Allocation::Single => context.vars(),
-        parser::ast::Allocation::Open => {
-            return match schedule_operations(operations, state.incremented(), context) {
-                None => None,
-                Some(mut result) => {
-                    let mut to_fill = Vec::new();
-                    std::mem::swap(&mut to_fill, &mut result.to_fill);
-                    result.ast.operations.extend(
-                        to_fill
-                            .into_iter()
-                            // we need to reverse to undo the stack
-                            .rev()
-                            .map(|s| ast::ScheduledOperation::Allocation(s)),
-                    );
-                    Some(result)
-                }
-            };
-        }
-        parser::ast::Allocation::Type(typ) => context.get_matching(typ),
-        parser::ast::Allocation::Var(v) => {
-            temp.push(v.clone());
-            &temp
-        }
-    };
-    for var in options {
-        if state.allocated.contains(var) {
-            continue;
-        }
-        // if any dependencies are unallocated, skip
-        if match context.program.dependencies.get(var) {
-            None => false,
-            Some(v) => v.iter().any(|x| !state.allocated.contains(x)),
-        } {
-            continue;
-        }
-        let new_state = state.clone_alloc(var.clone());
-        match schedule_operations(operations, new_state.incremented(), context) {
-            Some(mut result) => {
-                result
-                    .ast
-                    .operations
-                    .push(ast::ScheduledOperation::Allocation(var.clone()));
-                return Some(result);
-            }
-            None => {}
-        }
-    }
-    None
-}
-
-fn schedule_operations(
-    operations: &Vec<parser::ast::Operation>,
-    mut state: InState,
-    context: &Context,
-) -> Option<OutState> {
-    match operations.get(state.index) {
-        None => {
+    // we use the state allocation for tracking things left to allocate
+    let mut allocated = state.allocated.clone();
+    let prev_fill = state.has_fill; // retain if this is the top-most "blob"
+    return match schedule_operations(operations, state.incremented(true), context) {
+        None => None,
+        Some(mut result) => {
             // Run a simple BFS to remove remaining dependencies
-            let mut remaining: VecDeque<String> = context
-                .vars()
-                .iter()
-                .filter(|s| !state.allocated.contains(*s))
-                .cloned()
-                .collect();
+            dbg!(&result.to_fill);
+            let mut remaining = VecDeque::new();
+            std::mem::swap(&mut remaining, &mut result.to_fill);
+            // if the top-most blob, then fill in the rest
+            if !prev_fill {
+                let initial_result: HashSet<&String> = result.to_fill.iter().collect();
+                remaining.append(
+                    &mut context
+                        .vars()
+                        .iter()
+                        .cloned()
+                        .filter(|var| {
+                            !(result.allocated.contains(var) || initial_result.contains(var))
+                        })
+                        .collect(),
+                )
+            }
             let mut to_fill = Vec::new();
             let mut count = 0;
             while remaining.len() > 0 {
@@ -89,10 +46,10 @@ fn schedule_operations(
                     .program
                     .dependencies
                     .get(&element)
-                    .map(|v| v.iter().all(|s| state.allocated.contains(s)))
+                    .map(|v| v.iter().all(|s| allocated.contains(s)))
                     .unwrap_or(true)
                 {
-                    state.allocated.insert(element.clone());
+                    allocated.insert(element.clone());
                     to_fill.push(element);
                     count = 0;
                 } else {
@@ -104,8 +61,104 @@ fn schedule_operations(
                     count += 1;
                 }
             }
-            Some(OutState::new(to_fill))
+            // eh, whatever
+            while to_fill.len() > 0 {
+                result
+                    .ast
+                    .operations
+                    .push_front(ast::ScheduledOperation::Allocation(to_fill.pop().unwrap()));
+            }
+            Some(result)
         }
+    };
+}
+
+fn schedule_allocation(
+    operations: &Vec<parser::ast::Operation>,
+    state: InState,
+    allocation: &parser::ast::Allocation,
+    context: &Context,
+) -> Option<OutState> {
+    let mut temp = Vec::new();
+    let options = match allocation {
+        parser::ast::Allocation::Single => context.vars(),
+        parser::ast::Allocation::Open => {
+            return explicate_open(operations, state, context);
+        }
+        parser::ast::Allocation::Type(typ) => context.get_matching(typ),
+        parser::ast::Allocation::Var(v) => {
+            temp.push(v.clone());
+            &temp
+        }
+    };
+    // attempt without any filling
+    for var in options {
+        if state.allocated.contains(var) {
+            continue;
+        }
+        // if any dependencies are unallocated, skip
+        if context
+            .program
+            .dependencies
+            .get(var)
+            .map(|v| v.iter().any(|x| !state.allocated.contains(x)))
+            .unwrap_or(false)
+        {
+            continue;
+        }
+        let new_state = state.clone_alloc(var.clone());
+        match schedule_operations(operations, new_state.incremented(false), context) {
+            Some(mut result) => {
+                result
+                    .ast
+                    .operations
+                    .push_front(ast::ScheduledOperation::Allocation(var.clone()));
+                return Some(result);
+            }
+            None => {}
+        }
+    }
+    // Now try with filling
+    for var in options {
+        if state.allocated.contains(var) {
+            continue;
+        }
+        let new_state = state.clone_alloc(var.clone());
+        match schedule_operations(operations, new_state.incremented(false), context) {
+            Some(mut result) => {
+                let initial_result: HashSet<&String> = result.to_fill.iter().collect();
+                result.to_fill.append(
+                    &mut context
+                        .program
+                        .dependencies
+                        .get(var)
+                        .map(|v| {
+                            v.iter()
+                                .cloned()
+                                .filter(|var| !initial_result.contains(var))
+                                .collect()
+                        })
+                        .unwrap_or_else(|| VecDeque::new()),
+                );
+                result
+                    .ast
+                    .operations
+                    .push_front(ast::ScheduledOperation::Allocation(var.clone()));
+                return Some(result);
+            }
+            None => {}
+        }
+    }
+    None
+}
+
+fn schedule_operations(
+    operations: &Vec<parser::ast::Operation>,
+    state: InState,
+    context: &Context,
+) -> Option<OutState> {
+    match operations.get(state.index) {
+        None => Some(OutState::new(state)),
         Some(parser::ast::Operation::Branch(_)) => todo!(),
         Some(parser::ast::Operation::Allocation(allocation)) => {
             schedule_allocation(operations, state, allocation, context)
@@ -116,11 +169,10 @@ fn schedule_operations(
 pub fn schedule(program: parser::ast::Program) -> Option<ast::ScheduledProgram> {
     match schedule_operations(&program.operations, InState::new(), &Context::new(&program)) {
         None => None,
-        Some(mut result) => {
+        Some(result) => {
             if result.to_fill.len() > 0 {
                 None
             } else {
-                result.ast.operations.reverse();
                 Some(result.ast)
             }
         }

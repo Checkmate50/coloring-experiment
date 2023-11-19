@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::collections::VecDeque;
 
 use crate::parser;
 use crate::scheduler::ast;
@@ -6,21 +7,26 @@ use crate::scheduler::ast;
 #[derive(Debug, Clone)]
 pub struct InState {
     pub allocated: HashSet<parser::ast::Var>,
-    pub index: usize
+    pub index: usize,
+    // whether or not an open slot is available
+    // technically is an optimization, but whatever
+    pub has_fill: bool,
 }
 
 impl InState {
     pub fn new() -> InState {
         InState {
             allocated: HashSet::new(),
-            index: 0
+            index: 0,
+            has_fill: false
         }
     }
 
-    pub fn incremented(self) -> InState {
+    pub fn incremented(self, add_fill: bool) -> InState {
         InState {
             allocated: self.allocated,
-            index: self.index + 1
+            index: self.index + 1,
+            has_fill: self.has_fill || add_fill
         }
     }
 
@@ -30,7 +36,8 @@ impl InState {
         assert!(check);
         InState {
             allocated,
-            index: self.index
+            index: self.index,
+            has_fill: self.has_fill
         }
     }
 }
@@ -39,14 +46,17 @@ impl InState {
 pub struct OutState {
     pub ast: ast::ScheduledOperations,
     // the operations to insert at the next "open" slot
-    pub to_fill: Vec<String>,
+    pub to_fill: VecDeque<String>,
+    // list of allocations worked out recursively, used to help with filling
+    pub allocated: HashSet<parser::ast::Var>,
 }
 
 impl OutState {
-    pub fn new(to_fill: Vec<String>) -> OutState {
+    pub fn new(state: InState) -> OutState {
         OutState {
-            ast: ast::ScheduledOperations::new(Vec::new()),
-            to_fill,
+            ast: ast::ScheduledOperations::new(VecDeque::new()),
+            to_fill: VecDeque::new(),
+            allocated: state.allocated,
         }
-    }  
+    }
 }

@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{fmt, collections::VecDeque};
 
 #[derive(Debug)]
 pub enum ScheduledOperation {
@@ -11,13 +11,13 @@ pub enum ScheduledOperation {
 
 #[derive(Debug)]
 pub struct ScheduledOperations {
-    pub operations: Vec<ScheduledOperation>,
+    pub operations: VecDeque<ScheduledOperation>,
 }
 
 pub type ScheduledProgram = ScheduledOperations;
 
 impl ScheduledOperations {
-    pub fn new(operations: Vec<ScheduledOperation>) -> ScheduledOperations {
+    pub fn new(operations: VecDeque<ScheduledOperation>) -> ScheduledOperations {
         ScheduledOperations { operations }
     }
 }

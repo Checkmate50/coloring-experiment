@@ -26,7 +26,8 @@ pub enum Operation {
 
 #[derive(Debug, Clone)]
 pub struct Program {
-    pub types: HashMap<Var, Type>,
+    // vector cause order matters
+    pub types: Vec<(Var, Type)>,
     pub dependencies: HashMap<Var, Vec<Var>>,
     pub operations: Vec<Operation>,
 }
