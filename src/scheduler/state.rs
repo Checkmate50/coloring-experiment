@@ -18,7 +18,7 @@ impl InState {
         InState {
             allocated: HashSet::new(),
             index: 0,
-            has_fill: false
+            has_fill: false,
         }
     }
 
@@ -26,7 +26,7 @@ impl InState {
         InState {
             allocated: self.allocated,
             index: self.index + 1,
-            has_fill: self.has_fill || add_fill
+            has_fill: self.has_fill || add_fill,
         }
     }
 
@@ -37,7 +37,7 @@ impl InState {
         InState {
             allocated,
             index: self.index,
-            has_fill: self.has_fill
+            has_fill: self.has_fill,
         }
     }
 }

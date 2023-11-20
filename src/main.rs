@@ -17,6 +17,6 @@ fn main() {
     let program = parser::parse(&input_string).expect("Parsing failed");
     match scheduler::schedule(program) {
         None => println!("No solution found"),
-        Some(result) => print!("{}", result)
+        Some(result) => print!("{}", result),
     }
 }

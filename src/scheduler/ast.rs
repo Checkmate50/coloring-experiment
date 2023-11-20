@@ -1,4 +1,4 @@
-use std::{fmt, collections::VecDeque};
+use std::{collections::VecDeque, fmt};
 
 #[derive(Debug)]
 pub enum ScheduledOperation {
