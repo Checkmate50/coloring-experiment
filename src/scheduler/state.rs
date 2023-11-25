@@ -1,3 +1,4 @@
+use std::collections::BTreeSet;
 use std::collections::HashSet;
 use std::collections::VecDeque;
 
@@ -45,9 +46,10 @@ impl InState {
 #[derive(Debug)]
 pub struct OutState {
     pub ast: ast::ScheduledOperations,
-    // the operations to insert at the next "open" slot
-    pub to_fill: VecDeque<String>,
-    // list of allocations worked out recursively, used to help with filling
+    // the allocations to insert at the next "open" slot
+    // order matters, hence BTreeSet vs HashSet
+    pub to_fill: BTreeSet<parser::ast::Var>,
+    // set of allocations worked out recursively, used to help with filling
     pub allocated: HashSet<parser::ast::Var>,
 }
 
@@ -55,7 +57,7 @@ impl OutState {
     pub fn new(state: InState) -> OutState {
         OutState {
             ast: ast::ScheduledOperations::new(VecDeque::new()),
-            to_fill: VecDeque::new(),
+            to_fill: BTreeSet::new(),
             allocated: state.allocated,
         }
     }

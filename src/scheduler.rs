@@ -4,7 +4,7 @@ mod state;
 use crate::parser;
 use context::Context;
 use state::{InState, OutState};
-use std::collections::{HashSet, VecDeque};
+use std::collections::{HashSet, VecDeque, BTreeSet};
 
 fn explicate_open(
     operations: &Vec<parser::ast::Operation>,
@@ -17,14 +17,15 @@ fn explicate_open(
     return match schedule_operations(operations, state.incremented(true), context) {
         None => None,
         Some(mut result) => {
+            dbg!(&result);
             // Run a simple BFS to remove remaining dependencies
-            dbg!(&result.to_fill);
-            let mut remaining = VecDeque::new();
-            std::mem::swap(&mut remaining, &mut result.to_fill);
+            let mut current = BTreeSet::new();
+            std::mem::swap(&mut current, &mut result.to_fill);
+            let mut remaining_fills = VecDeque::new();
             // if the top-most blob, then fill in the rest
             if !prev_fill {
                 let initial_result: HashSet<&String> = result.to_fill.iter().collect();
-                remaining.append(
+                remaining_fills.append(
                     &mut context
                         .vars()
                         .iter()
@@ -37,9 +38,9 @@ fn explicate_open(
             }
             let mut to_fill = Vec::new();
             let mut count = 0;
-            while remaining.len() > 0 {
+            while remaining_fills.len() > 0 {
                 // get the first element of the queue
-                let element = remaining.pop_front().unwrap();
+                let element = remaining_fills.pop_front().unwrap();
 
                 // if we have written all the dependencies for this element
                 if context
@@ -53,9 +54,9 @@ fn explicate_open(
                     to_fill.push(element);
                     count = 0;
                 } else {
-                    remaining.push_back(element);
+                    remaining_fills.push_back(element);
                     // Safety check if we didn't make progress on the last loop
-                    if count >= remaining.len() {
+                    if count >= remaining_fills.len() {
                         return None;
                     }
                     count += 1;
@@ -126,20 +127,9 @@ fn schedule_allocation(
         let new_state = state.clone_alloc(var.clone());
         match schedule_operations(operations, new_state.incremented(false), context) {
             Some(mut result) => {
-                let initial_result: HashSet<&String> = result.to_fill.iter().collect();
-                result.to_fill.append(
-                    &mut context
-                        .program
-                        .dependencies
-                        .get(var)
-                        .map(|v| {
-                            v.iter()
-                                .cloned()
-                                .filter(|var| !initial_result.contains(var))
-                                .collect()
-                        })
-                        .unwrap_or_else(|| VecDeque::new()),
-                );
+                if let Some(data) = context.program.dependencies.get(var) {
+                    result.to_fill.extend(&mut data.iter().cloned());
+                }
                 result
                     .ast
                     .operations
