@@ -54,11 +54,17 @@ pub struct OutState {
 }
 
 impl OutState {
-    pub fn new(state: InState) -> OutState {
+    pub fn new() -> OutState {
         OutState {
             ast: ast::ScheduledOperations::new(VecDeque::new()),
             to_fill: BTreeSet::new(),
-            allocated: state.allocated,
+            allocated: HashSet::new(),
         }
+    }
+
+    pub fn allocate(&mut self, name : String) {
+        let check = self.allocated.insert(name.clone());
+        assert!(check);
+        self.ast.operations.push_front(ast::ScheduledOperation::Allocation(name))
     }
 }

@@ -4,7 +4,7 @@ mod state;
 use crate::parser;
 use context::Context;
 use state::{InState, OutState};
-use std::collections::{HashSet, VecDeque, BTreeSet};
+use std::collections::{BTreeSet, VecDeque};
 
 fn explicate_open(
     operations: &Vec<parser::ast::Operation>,
@@ -17,25 +17,25 @@ fn explicate_open(
     return match schedule_operations(operations, state.incremented(true), context) {
         None => None,
         Some(mut result) => {
-            dbg!(&result);
             // Run a simple BFS to remove remaining dependencies
             let mut current = BTreeSet::new();
             std::mem::swap(&mut current, &mut result.to_fill);
-            let mut remaining_fills = VecDeque::new();
             // if the top-most blob, then fill in the rest
-            if !prev_fill {
-                let initial_result: HashSet<&String> = result.to_fill.iter().collect();
-                remaining_fills.append(
-                    &mut context
-                        .vars()
-                        .iter()
-                        .cloned()
-                        .filter(|var| {
-                            !(result.allocated.contains(var) || initial_result.contains(var))
-                        })
-                        .collect(),
-                )
-            }
+
+            let mut remaining_fills: VecDeque<String> = if !prev_fill {
+                context
+                    .vars()
+                    .iter()
+                    .cloned()
+                    .filter(|var| !(result.allocated.contains(var) || allocated.contains(var)))
+                    .collect()
+            } else {
+                current
+                    .iter()
+                    .cloned()
+                    .filter(|var| !(result.allocated.contains(var) || allocated.contains(var)))
+                    .collect()
+            };
             let mut to_fill = Vec::new();
             let mut count = 0;
             while remaining_fills.len() > 0 {
@@ -43,32 +43,41 @@ fn explicate_open(
                 let element = remaining_fills.pop_front().unwrap();
 
                 // if we have written all the dependencies for this element
-                if context
-                    .program
-                    .dependencies
-                    .get(&element)
+                let deps = context.program.dependencies.get(&element);
+                if deps
                     .map(|v| v.iter().all(|s| allocated.contains(s)))
                     .unwrap_or(true)
                 {
                     allocated.insert(element.clone());
                     to_fill.push(element);
                     count = 0;
-                } else {
-                    remaining_fills.push_back(element);
-                    // Safety check if we didn't make progress on the last loop
+                }
+                // if there are any elements we are planning to fill, wait
+                else if deps
+                    .map(|v| v.iter().any(|s| remaining_fills.contains(s)))
+                    .unwrap_or(false)
+                {
+                    // cycle management, if there is a dependency cycle, we die
                     if count >= remaining_fills.len() {
                         return None;
                     }
                     count += 1;
+                    remaining_fills.push_back(element);
+                }
+                // otherwise request resolution at a later time
+                else {
+                    allocated.insert(element.clone());
+                    to_fill.push(element);
+                    for item in deps.cloned().unwrap_or(Vec::new()) {
+                        result.to_fill.insert(item);
+                    }
                 }
             }
             // eh, whatever
-            while to_fill.len() > 0 {
-                result
-                    .ast
-                    .operations
-                    .push_front(ast::ScheduledOperation::Allocation(to_fill.pop().unwrap()));
-            }
+            to_fill
+                .drain(..)
+                .rev()
+                .for_each(|element| result.allocate(element));
             Some(result)
         }
     };
@@ -110,10 +119,7 @@ fn schedule_allocation(
         let new_state = state.clone_alloc(var.clone());
         match schedule_operations(operations, new_state.incremented(false), context) {
             Some(mut result) => {
-                result
-                    .ast
-                    .operations
-                    .push_front(ast::ScheduledOperation::Allocation(var.clone()));
+                result.allocate(var.clone());
                 return Some(result);
             }
             None => {}
@@ -130,10 +136,7 @@ fn schedule_allocation(
                 if let Some(data) = context.program.dependencies.get(var) {
                     result.to_fill.extend(&mut data.iter().cloned());
                 }
-                result
-                    .ast
-                    .operations
-                    .push_front(ast::ScheduledOperation::Allocation(var.clone()));
+                result.allocate(var.clone());
                 return Some(result);
             }
             None => {}
@@ -148,7 +151,7 @@ fn schedule_operations(
     context: &Context,
 ) -> Option<OutState> {
     match operations.get(state.index) {
-        None => Some(OutState::new(state)),
+        None => Some(OutState::new()),
         Some(parser::ast::Operation::Branch(_)) => todo!(),
         Some(parser::ast::Operation::Allocation(allocation)) => {
             schedule_allocation(operations, state, allocation, context)
